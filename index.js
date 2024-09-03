@@ -42,6 +42,7 @@ async function run() {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
 const userCollection = client.db('byteBlogDB').collection('users')
+const postCollection = client.db('byteBlogDB').collection('posts')
 
 
     //add user to the db
@@ -56,6 +57,34 @@ const userCollection = client.db('byteBlogDB').collection('users')
             console.log(error)
             
           }
+        });
+    
+    // getting blog posts 
+    app.get('/posts', async (req, res) => {
+      const data = req.body;
+      console.log(data)
+
+        const sortedData = await postCollection
+          .find()
+          .sort({ createdAt: -1 })
+        .toArray();
+      
+      console.log(sortedData)
+      
+      
+      res.send(sortedData)
+    })
+
+    
+// posting a new blog
+        app.post('/posts', async (req, res) => {
+          const postData = req.body;
+
+          console.log(postData);
+
+          const result = await postCollection.insertOne(postData);
+
+          res.send(result);
         });
 
 
