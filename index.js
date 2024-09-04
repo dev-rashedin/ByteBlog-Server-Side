@@ -1,5 +1,5 @@
 const express = require('express');
-const app = express()
+const app = express();
 const cors = require('cors');
 const { MongoClient, ServerApiVersion } = require('mongodb');
 const jwt = require('jsonwebtoken');
@@ -7,7 +7,7 @@ const cookieParser = require('cookie-parser');
 
 require('dotenv').config();
 
-const port = process.env.PORT || 5000
+const port = process.env.PORT || 5000;
 
 // middleware
 const corsOptions = {
@@ -24,9 +24,7 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(cookieParser());
 
-
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.4qgkjzt.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
-
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -41,55 +39,90 @@ async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
-const userCollection = client.db('byteBlogDB').collection('users')
-const postCollection = client.db('byteBlogDB').collection('posts')
-
+    const userCollection = client.db('byteBlogDB').collection('users');
+    const postCollection = client.db('byteBlogDB').collection('posts');
 
     //add user to the db
-        app.post('/users', async (req, res) => {
-          try {
-            const user = req.body;
-            console.log(user);
+    app.post('/users', async (req, res) => {
+      try {
+        const user = req.body;
+        console.log(user);
 
-            const result = await userCollection.insertOne(user);
-            res.send(result);
-          } catch (error) {
-            console.log(error)
-            
-          }
-        });
-    
-    // getting recent blog posts 
-    app.get('/recent-posts', async (req, res) => {
-      const data = req.body;
-      console.log(data)
+        const result = await userCollection.insertOne(user);
+        res.send(result);
+      } catch (error) {
+        console.log(error);
+      }
+    });
 
-        const sortedData = await postCollection
-          .find()
-          .sort({ createdAt: -1 })
+    // get all the post based on query
+    app.get('/all-posts', async (req, res) => {
+      const size = parseInt(req.query.size);
+      const page = parseInt(req.query.page);
+      const filter = req.query.filter;
+      const sort = req.query.sort;
+      const search = req.query.search;
+
+      let query = {
+        post_title: { $regex: search, $options: 'i' },
+      };
+
+      if (filter) query.category = filter;
+
+      let options = {};
+
+      if (sort) options = { sort: { createdAt: sort === 'asc' ? 1 : -1 } };
+
+      const result = await postCollection
+        .find(query, options)
+        .skip((page - 1) * size)
+        .limit(size)
         .toArray();
-      
-      console.log(sortedData)
-      
-      
-      res.send(sortedData)
-    })
 
-    
-// posting a new blog
-        app.post('/posts', async (req, res) => {
-          const postData = req.body;
+      res.send(result);
+    });
 
-          console.log(postData);
+    // get the post count
+    app.get('/postCount', async (req, res) => {
+      const filter = req.query.filter;
+      const search = req.query.search;
 
-          const result = await postCollection.insertOne(postData);
+      let query = {
+        post_title: { $regex: search, $options: 'i' },
+      };
 
-          res.send(result);
-        });
+      if (filter) query.category = filter;
 
+      try {
+        const count = await postCollection.countDocuments(query);
 
+        res.send({ count });
+      } catch (error) {
+        console.error('Error fetching post count:', error);
+        res.status(500).send({ error: 'Failed to fetch job count' });
+      }
+    });
 
+    // getting recent blog posts
+    app.get('/recent-posts', async (req, res) => {
+      const sortedData = await postCollection
+        .find()
+        .sort({ createdAt: -1 })
+        .toArray();
 
+      res.send(sortedData);
+    });
+
+    // creating a new blog
+    app.post('/posts', async (req, res) => {
+      const postData = req.body;
+
+      console.log(postData);
+
+      const result = await postCollection.insertOne(postData);
+
+      res.send(result);
+    });
 
     // Send a ping to confirm a successful connection
     await client.db('admin').command({ ping: 1 });
@@ -103,12 +136,10 @@ const postCollection = client.db('byteBlogDB').collection('posts')
 }
 run().catch(console.dir);
 
-
 app.get('/', (req, res) => {
-  res.send('ByteBlog server is running')
-})
+  res.send('ByteBlog server is running');
+});
 
 app.listen(port, () => {
   console.log('ByteBlog server is running');
-  
-})
+});
