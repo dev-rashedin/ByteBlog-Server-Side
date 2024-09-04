@@ -59,8 +59,8 @@ const postCollection = client.db('byteBlogDB').collection('posts')
           }
         });
     
-    // getting blog posts 
-    app.get('/posts', async (req, res) => {
+    // getting recent blog posts 
+    app.get('/recent-posts', async (req, res) => {
       const data = req.body;
       console.log(data)
 
