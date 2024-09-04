@@ -1,7 +1,7 @@
 const express = require('express');
 const app = express();
 const cors = require('cors');
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
 
@@ -41,6 +41,8 @@ async function run() {
     await client.connect();
     const userCollection = client.db('byteBlogDB').collection('users');
     const postCollection = client.db('byteBlogDB').collection('posts');
+    const commentCollection = client.db('byteBlogDB').collection('comments');
+    
 
     //add user to the db
     app.post('/users', async (req, res) => {
@@ -113,6 +115,17 @@ async function run() {
       res.send(sortedData);
     });
 
+    // getting a blog data by id
+        app.get('/posts/:id', async (req, res) => {
+          const id = req.params.id;
+          console.log(id);
+
+          const query = { _id: new ObjectId(id) };
+
+          const result = await postCollection.findOne(query);
+          res.send(result);
+        });
+
     // creating a new blog
     app.post('/posts', async (req, res) => {
       const postData = req.body;
@@ -120,6 +133,17 @@ async function run() {
       console.log(postData);
 
       const result = await postCollection.insertOne(postData);
+
+      res.send(result);
+    });
+
+    // creating a new comment
+    app.post('/comments', async (req, res) => {
+      const comment = req.body;
+
+      console.log(comment)
+
+      const result = await commentCollection.insertOne(comment);
 
       res.send(result);
     });
