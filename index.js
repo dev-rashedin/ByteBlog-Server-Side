@@ -118,7 +118,6 @@ async function run() {
     // getting a blog data by id
         app.get('/posts/:id', async (req, res) => {
           const id = req.params.id;
-          console.log(id);
 
           const query = { _id: new ObjectId(id) };
 
@@ -137,11 +136,22 @@ async function run() {
       res.send(result);
     });
 
+    // comment related api
+
+    // getting all comment by blog id
+    app.get('/comments/:id', async (req, res) => {
+      const id = req.params.id;    
+
+ const query = { blog_id: id };
+
+      const result = await commentCollection.find(query).toArray();
+
+      res.send(result)
+})
+
     // creating a new comment
     app.post('/comments', async (req, res) => {
       const comment = req.body;
-
-      console.log(comment)
 
       const result = await commentCollection.insertOne(comment);
 
