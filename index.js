@@ -42,13 +42,13 @@ async function run() {
     const userCollection = client.db('byteBlogDB').collection('users');
     const postCollection = client.db('byteBlogDB').collection('posts');
     const commentCollection = client.db('byteBlogDB').collection('comments');
+    const wishlistCollection = client.db('byteBlogDB').collection('wishlists');
     
 
     //add user to the db
     app.post('/users', async (req, res) => {
       try {
         const user = req.body;
-        console.log(user);
 
         const result = await userCollection.insertOne(user);
         res.send(result);
@@ -129,12 +129,29 @@ async function run() {
     app.post('/posts', async (req, res) => {
       const postData = req.body;
 
-      console.log(postData);
-
       const result = await postCollection.insertOne(postData);
 
       res.send(result);
     });
+
+    // updating new blog
+app.patch('/posts/:id', async (req, res) => {
+  const id = req.params.id;
+  const postData = req.body;
+ 
+
+  const query = { _id: new ObjectId(id) };
+
+  const updatedDoc = {
+    $set: {
+      ...postData,
+    },
+  };
+
+  const result = await postCollection.updateOne(query, updatedDoc);
+
+  res.send(result);
+});
 
     // comment related api
 
@@ -157,6 +174,26 @@ async function run() {
 
       res.send(result);
     });
+
+    // wishlist related api
+
+    //creating a new wishlist
+   app.post('/wishlists', async (req, res) => {
+     const wishlist = req.body;
+
+     try {
+      const result = await wishlistCollection.insertOne(wishlist)
+
+       res.send(result);
+     } catch (error) {
+       console.error('Error inserting wishlist:', error);
+       res.status(500).send({ message: 'Internal Server Error' });
+     }
+   });
+
+
+
+
 
     // Send a ping to confirm a successful connection
     await client.db('admin').command({ ping: 1 });
