@@ -115,6 +115,24 @@ async function run() {
       res.send(sortedData);
     });
 
+    // getting recent blog posts
+    app.get('/featured-posts', async (req, res) => {
+      const sortedData = await postCollection
+        .aggregate([
+          {
+            $addFields: {
+              descriptionLength: { $strLenCP: '$long_description' },
+            },
+          },
+          {
+            $sort: { descriptionLength: -1 }, // Sorting by the length of long_description in descending order
+          },
+        ])
+        .toArray();
+
+      res.send(sortedData);
+    });
+
     // getting a blog data by id
         app.get('/posts/:id', async (req, res) => {
           const id = req.params.id;
@@ -157,13 +175,21 @@ app.patch('/posts/:id', async (req, res) => {
 
     // getting all comment by blog id
     app.get('/comments/:id', async (req, res) => {
-      const id = req.params.id;    
+      const id = req.params.id;  
+      console.log(id)
+      
 
- const query = { blog_id: id };
+      const query = { blog_id: id };
 
-      const result = await commentCollection.find(query).toArray();
-
-      res.send(result)
+      try {
+        const result = await commentCollection.find(query).toArray();
+        res.send(result);
+        console.log(result)
+        
+      } catch (error) {
+        console.error('Error fetching comments:', error);
+        res.status(500).send({ message: 'Internal Server Error' });
+      }
 })
 
     // creating a new comment
@@ -177,7 +203,22 @@ app.patch('/posts/:id', async (req, res) => {
 
     // wishlist related api
 
-    //creating a new wishlist
+    // get wishlist by email
+    app.get('/wishlists/:email', async (req, res) => {
+      const email = req.params.email;
+      console.log(email)
+      
+  
+      
+      const query = { viewer_email: email }
+      
+      const result = await wishlistCollection.find(query).toArray()
+      
+      res.send(result)
+    })
+
+
+    // creating a new wishlist
    app.post('/wishlists', async (req, res) => {
      const wishlist = req.body;
 
