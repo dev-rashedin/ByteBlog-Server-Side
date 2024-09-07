@@ -24,6 +24,27 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(cookieParser());
 
+// custom middleware
+const verifyToken = (req, res, next) => {
+  const token = req.cookies?.token;
+
+   if (!token) return res.status(401).send({ message: 'Unauthorized' });
+
+   jwt.verify(token, process.env.ACCESS_TOKEN, (error, decoded) => {
+     if (error) {
+       console.log(error)
+       
+       return res.status(401).send({ message: 'Unauthorized access' });
+     }
+     req.user = decoded.email;
+     
+     console.log(decoded.email)
+     
+     return next();
+   });
+ 
+}
+
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.4qgkjzt.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -43,7 +64,32 @@ async function run() {
     const postCollection = client.db('byteBlogDB').collection('posts');
     const commentCollection = client.db('byteBlogDB').collection('comments');
     const wishlistCollection = client.db('byteBlogDB').collection('wishlists');
-    
+
+    // auth related api
+    app.post('/jwt', async (req, res) => {
+      const loggedUser = req.body;
+
+      const token = jwt.sign(loggedUser, process.env.ACCESS_TOKEN_SECRET, {
+        expiresIn: '7d',
+      });
+
+      res
+        .cookie('token', token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        })
+        .send({ success: true });
+    });
+
+    // clear token on logout
+    app.get('/logout', (req, res) => {
+      res
+        .clearCookie('token', {
+          maxAge: 0,
+        })
+        .send({ success: true });
+    });
 
     //add user to the db
     app.post('/users', async (req, res) => {
@@ -134,14 +180,14 @@ async function run() {
     });
 
     // getting a blog data by id
-        app.get('/posts/:id', async (req, res) => {
-          const id = req.params.id;
+    app.get('/posts/:id', async (req, res) => {
+      const id = req.params.id;
 
-          const query = { _id: new ObjectId(id) };
+      const query = { _id: new ObjectId(id) };
 
-          const result = await postCollection.findOne(query);
-          res.send(result);
-        });
+      const result = await postCollection.findOne(query);
+      res.send(result);
+    });
 
     // creating a new blog
     app.post('/posts', async (req, res) => {
@@ -153,44 +199,39 @@ async function run() {
     });
 
     // updating new blog
-app.patch('/posts/:id', async (req, res) => {
-  const id = req.params.id;
-  const postData = req.body;
- 
+    app.patch('/posts/:id', async (req, res) => {
+      const id = req.params.id;
+      const postData = req.body;
 
-  const query = { _id: new ObjectId(id) };
+      const query = { _id: new ObjectId(id) };
 
-  const updatedDoc = {
-    $set: {
-      ...postData,
-    },
-  };
+      const updatedDoc = {
+        $set: {
+          ...postData,
+        },
+      };
 
-  const result = await postCollection.updateOne(query, updatedDoc);
+      const result = await postCollection.updateOne(query, updatedDoc);
 
-  res.send(result);
-});
+      res.send(result);
+    });
 
     // comment related api
 
     // getting all comment by blog id
     app.get('/comments/:id', async (req, res) => {
-      const id = req.params.id;  
-      console.log(id)
-      
+      const id = req.params.id;
 
       const query = { blog_id: id };
 
       try {
         const result = await commentCollection.find(query).toArray();
         res.send(result);
-        console.log(result)
-        
       } catch (error) {
         console.error('Error fetching comments:', error);
         res.status(500).send({ message: 'Internal Server Error' });
       }
-})
+    });
 
     // creating a new comment
     app.post('/comments', async (req, res) => {
@@ -206,35 +247,43 @@ app.patch('/posts/:id', async (req, res) => {
     // get wishlist by email
     app.get('/wishlists/:email', async (req, res) => {
       const email = req.params.email;
-      console.log(email)
-      
-  
-      
-      const query = { viewer_email: email }
-      
-      const result = await wishlistCollection.find(query).toArray()
-      
-      res.send(result)
-    })
 
+      const query = { viewer_email: email };
+
+      const result = await wishlistCollection.find(query).toArray();
+
+      res.send(result);
+    });
 
     // creating a new wishlist
-   app.post('/wishlists', async (req, res) => {
-     const wishlist = req.body;
+    app.post('/wishlists', async (req, res) => {
+      const wishlist = req.body;
 
-     try {
-      const result = await wishlistCollection.insertOne(wishlist)
+      try {
+        const result = await wishlistCollection.insertOne(wishlist);
 
-       res.send(result);
-     } catch (error) {
-       console.error('Error inserting wishlist:', error);
-       res.status(500).send({ message: 'Internal Server Error' });
-     }
-   });
+        res.send(result);
+      } catch (error) {
+        console.error('Error inserting wishlist:', error);
+        res.status(500).send({ message: 'Internal Server Error' });
+      }
+    });
 
+    // deleting wishlist
+    app.delete('/wishlists/:id', async (req, res) => {
+      const id = req.params.id;
 
+      const query = { _id: id };
 
+      try {
+        const result = await wishlistCollection.deleteOne(query);
 
+        res.send(result);
+      } catch (error) {
+        console.error('Error inserting wishlist:', error);
+        res.status(500).send({ message: 'Internal Server Error' });
+      }
+    });
 
     // Send a ping to confirm a successful connection
     await client.db('admin').command({ ping: 1 });
