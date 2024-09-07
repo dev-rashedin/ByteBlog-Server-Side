@@ -13,7 +13,7 @@ const port = process.env.PORT || 5000;
 const corsOptions = {
   origin: [
     'http://localhost:5173',
-    'https://solosphere.web.app',
+    'https://byteblog-da679.web.app',
     'https://byteblog-da679.firebaseapp.com',
   ],
   credentials: true,
@@ -42,7 +42,6 @@ const verifyToken = (req, res, next) => {
      
      return next();
    });
- 
 }
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.4qgkjzt.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
@@ -56,10 +55,20 @@ const client = new MongoClient(uri, {
   },
 });
 
+const cookieOption = {
+  httpOnly: true,
+  secure: true,
+  sameSite: 'none',
+  maxAge: 60 * 60 * 1000,
+  // secure: process.env.NODE_ENV === 'production',
+  // sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+};
+
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
+
     const userCollection = client.db('byteBlogDB').collection('users');
     const postCollection = client.db('byteBlogDB').collection('posts');
     const commentCollection = client.db('byteBlogDB').collection('comments');
@@ -73,21 +82,13 @@ async function run() {
         expiresIn: '7d',
       });
 
-      res
-        .cookie('token', token, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-        })
-        .send({ success: true });
+      res.cookie('token', token, cookieOption).send({ success: true });
     });
 
     // clear token on logout
-    app.get('/logout', (req, res) => {
+    app.post('/logout', (req, res) => {
       res
-        .clearCookie('token', {
-          maxAge: 0,
-        })
+        .clearCookie('token', { ...cookieOption, maxAge: 0 })
         .send({ success: true });
     });
 
@@ -120,7 +121,8 @@ async function run() {
       let options = {};
 
       if (sort) options = { sort: { createdAt: sort === 'asc' ? 1 : -1 } };
-
+try {
+  
       const result = await postCollection
         .find(query, options)
         .skip((page - 1) * size)
@@ -128,6 +130,10 @@ async function run() {
         .toArray();
 
       res.send(result);
+} catch (error) {
+  console.log('Error', error)
+  
+}
     });
 
     // get the post count
@@ -288,7 +294,7 @@ async function run() {
     // Send a ping to confirm a successful connection
     await client.db('admin').command({ ping: 1 });
     console.log(
-      'Pinged your deployment. You successfully connected to MongoDB!'
+      // 'Pinged your deployment. You successfully connected to MongoDB!'
     );
   } finally {
     // Ensures that the client will close when you finish/error
