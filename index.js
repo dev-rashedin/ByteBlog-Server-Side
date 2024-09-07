@@ -125,7 +125,7 @@ async function run() {
             },
           },
           {
-            $sort: { descriptionLength: -1 }, // Sorting by the length of long_description in descending order
+            $sort: { descriptionLength: -1 },
           },
         ])
         .toArray();
