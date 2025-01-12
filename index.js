@@ -264,15 +264,29 @@ try {
     // creating a new wishlist
     app.post('/wishlists', async (req, res) => {
       const wishlist = req.body;
+      // console.log(wishlist);
 
       try {
-        const result = await wishlistCollection.insertOne(wishlist);
+        const existingWishlist = await wishlistCollection.findOne({
+          _id: wishlist._id,
+        });
+        if (!existingWishlist) {
+           try {
+             const result = await wishlistCollection.insertOne(wishlist);
 
-        res.send(result);
+             res.send(result);
+           } catch (error) {
+             console.error('Error inserting wishlist:', error);
+             res.status(500).send({ message: 'Internal Server Error' });
+           }
+        } else {
+          res.status(500).send({ message: 'Already added to wishlist' });
+        }
       } catch (error) {
-        console.error('Error inserting wishlist:', error);
-        res.status(500).send({ message: 'Internal Server Error' });
+        
       }
+
+   
     });
 
     // deleting wishlist
