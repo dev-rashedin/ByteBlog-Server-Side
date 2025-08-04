@@ -4,6 +4,8 @@ const cors = require('cors');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
+const { StatusCodes } = require('http-status-toolkit');
+const { notFoundHandler, globalErrorHandler } = require('express-error-toolkit');
 
 require('dotenv').config();
 
@@ -318,8 +320,11 @@ try {
 run().catch(console.dir);
 
 app.get('/', (req, res) => {
-  res.send('ByteBlog server is running');
+  res.status(StatusCodes.OK).send('ByteBlog server is running');
 });
+
+app.use(notFoundHandler);
+app.use(globalErrorHandler)
 
 app.listen(port, () => {
   console.log('ByteBlog server is running');
